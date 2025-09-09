@@ -1,0 +1,41 @@
+# Ignore bundler config
+/.bundle
+
+# Ignore log files
+/log/*
+!/log/.keep
+
+# Ignore temporary files
+/tmp
+*.tmp
+*.swp
+*~
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore RubyMine / IDE files
+/.idea
+*.iml
+
+# Ignore rbenv / rvm files
+/.rbenv-vars
+/.ruby-version
+/.ruby-gemset
+
+# Ignore Gemfile.lock (recommended for gems)
+Gemfile.lock
+
+# Ignore coverage reports
+/coverage
+
+# Ignore built gem packages
+/pkg
+*.gem
+
+# Ignore test artifacts
+/test/tmp
+/test/results
+
+
