@@ -104,10 +104,64 @@ module Caput
         if [ -d "#{deploy_path}" ]; then
           echo "Deploy directories already exist"
         else
-          sudo mkdir -p "#{deploy_path}/shared/tmp/pids" "#{deploy_path}/shared/tmp/sockets" "#{deploy_path}/shared/log"
+          sudo mkdir -p \
+              "#{deploy_path}/shared/tmp/pids" \
+              "#{deploy_path}/shared/tmp/sockets" \
+              "#{deploy_path}/shared/log" \
+              "#{deploy_path}/shared/storage" \
+              "#{deploy_path}/shared/config"
           sudo chown -R #{deploy_user}:#{deploy_user} "#{deploy_path}"
         fi
       BASH
+
+      puts "Upload master key if it exists"
+      master_path = "config/master.key"
+      if File.exist?(master_path)
+        remote.upload_file!(master_path, "/tmp/master.key")
+        remote.exec!("sudo mv /tmp/master.key #{deploy_path}/shared/config/master.key")
+        remote.exec!("sudo chmod 0400 #{deploy_path}/shared/config/master.key")
+      else
+        puts "Note: No master key exists in local directory"
+      end
+
+      puts "\nCreate MySQL user if it doesn't exist"
+
+      # Get username and password from the local configuration file
+      require 'active_support'
+      require 'active_support/encrypted_configuration'
+      require 'yaml'
+      rails_root = Dir.pwd
+      credentials_path = File.join(rails_root, 'config', 'credentials.yml.enc')
+      master_key_path = File.join(rails_root, 'config', 'master.key')
+      master_key = ENV['RAILS_MASTER_KEY'] || (File.exist?(master_key_path) && File.read(master_key_path).strip)
+      raise "Master key not found in ENV['RAILS_MASTER_KEY'] or #{master_key_path}" unless master_key
+
+      # Create encrypted configuration
+      conf = ActiveSupport::EncryptedConfiguration.new(
+        config_path: credentials_path,
+        key_path: master_key_path,
+        env_key: 'RAILS_MASTER_KEY',
+        raise_if_missing_key: true
+      )
+
+      creds = YAML.safe_load(conf.read)
+      mysql_database = creds.dig('mysql', 'database')
+      mysql_username = creds.dig('mysql', 'username')
+      mysql_password = creds.dig('mysql', 'password')
+
+      sql = <<~SQL
+        CREATE DATABASE IF NOT EXISTS #{mysql_database};
+        CREATE USER IF NOT EXISTS #{mysql_username}@localhost IDENTIFIED BY '#{mysql_password}';
+        GRANT ALL PRIVILEGES ON #{mysql_database}.* TO #{mysql_username}@localhost;
+        FLUSH PRIVILEGES;
+      SQL
+
+      # Escape quotes for bash
+      escaped_sql = sql.strip.gsub('"', '\"').gsub('$', '\$')
+
+      # Build the full command to run on the remote server
+     cmd = %Q(sudo mysql -e "#{escaped_sql}")
+     remote.exec!(cmd)
 
       puts "\nInstall Nginx site config..."
       nginx_conf = <<~NGINX
@@ -150,6 +204,8 @@ module Caput
         Type=simple
         User=#{deploy_user}
         WorkingDirectory=#{deploy_path}/current
+        Environment="RAILS_ENV=production"
+        Environment="RACK_ENV=production"
         ExecStart=#{deploy_path}/shared/bin/start_puma.sh
         Restart=always
 
@@ -230,6 +286,7 @@ module Caput
       BASH
 
       puts "\nServer preparation complete."
+      puts "\nBefore deploying, please verify that the deploy user has access to the the code repository."
     end
 
     def check_sudo!(user, server)

@@ -35,7 +35,6 @@ module Caput
 
       FileUtils.mkdir_p('config/deploy')
       deploy_rb = 'config/deploy.rb'
-      backup_file(deploy_rb)
       File.open(deploy_rb, 'a') do |f|
         f.puts <<~DEPLOY
 
@@ -48,6 +47,7 @@ module Caput
           set :puma_pid, "#{deploy_path}/shared/tmp/pids/puma.pid"
           ask :branch, `git rev-parse --abbrev-ref HEAD`.chomp
           set :linked_files, fetch(:linked_files, []).push('config/master.key')
+          set :linked_dirs, fetch(:linked_dirs, []).push('storage')
         DEPLOY
       end
 
@@ -73,10 +73,5 @@ module Caput
       end
     end
 
-    def backup_file(path)
-      return unless File.exist?(path)
-      bak = "#{path}.bak"
-      FileUtils.cp(path, bak)
-    end
   end
 end

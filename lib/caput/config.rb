@@ -36,7 +36,7 @@ module Caput
 
         # Ruby version to use with rbenv. This version will be installed via rbenv on the server.
         # It needs to match the RUBY version used by the Ruby on Rails application being deployed.
-        RUBY_VERSION="3.2.2"
+        RUBY_VERSION="3.3.6"
 
         # Path on the server where app will be deployed. This will be the root directory on the
         # server where the Ruby on Rails application will be deployed by Capistrano.

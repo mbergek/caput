@@ -51,6 +51,35 @@ Edit `caput.conf` with the correct values for your setup:
 
 > Make sure MySQL and Nginx are installed on the server. Caput will notify you if these dependencies are missing.
 
+If not already the case, update the config/database.yml file to use MySQL for storage instead of the default Sqlite3. The below section can be used as a template.
+
+```production:
+  primary: &production_primary
+    adapter: mysql2
+    encoding: utf8mb4
+    database: <%= Rails.application.credentials.dig(:mysql, :database) %>
+    username: <%= Rails.application.credentials.dig(:mysql, :username) %>
+    password: <%= Rails.application.credentials.dig(:mysql, :password) %>
+    host: localhost
+    port: 3306
+  cache:
+    <<: *production_primary
+  queue:
+    <<: *production_primary
+  cable:
+    <<: *production_primary
+```
+
+The above also requires the database information is added to the Rails credentials file by running rails credentials:edit and adding a MySQL section.
+
+```mysql:
+  database: <DATABASE NAME>
+  username: <DATABASE USERNAME>
+  password: <DATABASE PASSWORD>
+```
+
+The database name is typically the application name suffixed with '_production'.
+
 ### 3. Prepare the server
 
 Run:
@@ -61,7 +90,7 @@ caput server
 
 Caput will:
 
-- Validate prerequisites (MySQL client/server, Nginx, setup user, DNS)  
+- Validate prerequisites (MySQL client/server, Nginx, setup user, DNS) 
 - Create the Capistrano-compatible folder structure 
 - Set up a **systemd service** for Puma to serve requests in the background  
 - Configure permissions for the `deploy` user  
@@ -81,7 +110,12 @@ This will:
 - Add Capistrano configuration and necessary files to your local Rails repository  
 - Make the repository ready for deployments  
 
-> Currently, `caput server` and `caput local` must be run separately, in that order. In the future, these may be combined into a single `caput setup` command.
+### 5. Deploy the application
+
+Once the above has been performed, the application can be deployed using standard Capistrano commands.
+
+```cap production deploy
+```
 
 ---
 
