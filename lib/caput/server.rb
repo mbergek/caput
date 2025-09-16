@@ -150,7 +150,7 @@ module Caput
       mysql_password = creds.dig('mysql', 'password')
 
       sql = <<~SQL
-        CREATE DATABASE IF NOT EXISTS #{mysql_database};
+        CREATE DATABASE IF NOT EXISTS #{mysql_database} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
         CREATE USER IF NOT EXISTS #{mysql_username}@localhost IDENTIFIED BY '#{mysql_password}';
         GRANT ALL PRIVILEGES ON #{mysql_database}.* TO #{mysql_username}@localhost;
         FLUSH PRIVILEGES;
